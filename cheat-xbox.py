@@ -4,6 +4,7 @@ import argparse
 import numpy as np
 
 from gym_brt.envs import QubeSwingupEnv
+from gym_brt.control import pd_control_policy
 
 
 # All of these are in the range (-1.0, +1.0)
@@ -19,10 +20,7 @@ AXIS = {
 }
 
 
-def run(frequency=250, use_simulator=False, max_time=5):
-    # max time is in seconds until reset
-
-    # This part of the code (getting the joystick) is from a pygame example
+def run(frequency=250, use_simulator=False, max_time=5): # max time is in seconds until reset
     pygame.init()
     pygame.joystick.init()
     clock = pygame.time.Clock()
@@ -49,6 +47,9 @@ def run(frequency=250, use_simulator=False, max_time=5):
                 if event.axis == AXIS["left-thumb-x"]:
                     axis = joystick.get_axis(AXIS["left-thumb-x"])
                     action = -3.0 * axis
+
+            if abs(state[1]) < (20*np.pi/180):
+                action = pd_control_policy(state)
 
             # Run the action in the environment
             state, reward, done, info = env.step(action)
@@ -77,12 +78,9 @@ def main():
     parser.add_argument("-s", "--use_simulator", action="store_true")
     args, _ = parser.parse_known_args()
 
-    run(
-        frequency=args.frequency,
-        use_simulator=args.use_simulator,
-        max_time=args.max_time,
-    )
+    run(frequency=args.frequency, use_simulator=args.use_simulator, max_time=args.max_time)
 
 
-if __name__ == "__main__":
+
+if __name__ == '__main__':
     main()
