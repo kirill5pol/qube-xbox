@@ -36,7 +36,7 @@ class QubeSwingupLEDEnv(QubeSwingupEnv):
         super(QubeSwingupEnv, self).__init__(**kwargs)
         self.led_state = LED["manual"]
 
-    def set_led_state(s):
+    def set_led_state(self, s):
         self.led_state = LED[s]
 
     def _led(self):
@@ -44,7 +44,7 @@ class QubeSwingupLEDEnv(QubeSwingupEnv):
         if is_upright:
             return [0, 1, 0]
         else:
-            return self._led_color
+            return self.led_state
 
 
 def run(use_simulator=False):
@@ -77,36 +77,38 @@ def run(use_simulator=False):
 
             # Get the actions from the xbox controller =========================
             for event in pygame.event.get():
-                if event.axis == AXIS["left-thumb-x"]:
-                    axis = joystick.get_axis(AXIS["left-thumb-x"])
-                elif event.axis == AXIS["right-thumb-x"]:
-                    axis = joystick.get_axis(AXIS["right-thumb-x"])
+                if event.type == pygame.JOYAXISMOTION:
+                    if event.axis == AXIS["left-thumb-x"]:
+                        axis = joystick.get_axis(AXIS["left-thumb-x"])
+                    elif event.axis == AXIS["right-thumb-x"]:
+                        axis = joystick.get_axis(AXIS["right-thumb-x"])
 
-                if event.button == BUTTON["A"]:
-                    if game_state == STATES["manual"]:
-                        game_state = STATES["cheat"]
-                        env.set_led_state("cheat")
+                if event.type == pygame.JOYBUTTONDOWN:
+                    if joystick.get_button(BUTTON["A"]):
+                        if game_state == STATES["manual"]:
+                            game_state = STATES["cheat"]
+                            env.set_led_state("cheat")
 
-                    elif game_state == STATES["cheat"]:
-                        game_state = STATES["manual"]
-                        env.set_led_state("manual")
+                        elif game_state == STATES["cheat"]:
+                            game_state = STATES["manual"]
+                            env.set_led_state("manual")
 
-                    elif game_state == STATES["rl"]:
-                        game_state = STATES["cheat"]
-                        env.set_led_state("cheat")
+                        elif game_state == STATES["rl"]:
+                            game_state = STATES["cheat"]
+                            env.set_led_state("cheat")
 
-                elif event.button == BUTTON["B"]:
-                    if game_state == STATES["manual"]:
-                        game_state = STATES["rl"]
-                        env.set_led_state("rl")
+                    elif joystick.get_button(BUTTON["B"]):
+                        if game_state == STATES["manual"]:
+                            game_state = STATES["rl"]
+                            env.set_led_state("rl")
 
-                    elif game_state == STATES["cheat"]:
-                        game_state = STATES["rl"]
-                        env.set_led_state("rl")
+                        elif game_state == STATES["cheat"]:
+                            game_state = STATES["rl"]
+                            env.set_led_state("rl")
 
-                    elif game_state == STATES["rl"]:
-                        game_state = STATES["manual"]
-                        env.set_led_state("manual")
+                        elif game_state == STATES["rl"]:
+                            game_state = STATES["manual"]
+                            env.set_led_state("manual")
 
             # Do an action depending on your state =============================
             if game_state == STATES["manual"]:
