@@ -39,7 +39,7 @@ def next_state(state, action, dt=0.004):
 class QubeSwingupEnv:
     def __init__(self):
         self.state = [0, 0, 0, 0]
-        self._viewer = QubeRenderer(theta, alpha, 250)
+        self._viewer = QubeRenderer(0.0, 0.0, 250)
 
     def reward(self):
         theta = self.state[0]
