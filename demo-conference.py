@@ -71,7 +71,6 @@ def run(use_simulator=False):
 
     # Open the Qube Environment ================================================
     # with QubeSwingupLEDEnv(use_simulator=use_simulator) as env:
-
     env = QubeSwingupLEDEnv(use_simulator=use_simulator)
     try:
         state = env.reset()
@@ -93,7 +92,7 @@ def run(use_simulator=False):
                         axis = joystick.get_axis(AXIS["right-thumb-x"])
 
                 if event.type == pygame.JOYBUTTONDOWN:
-                    if joystick.get_button(BUTTON["Y"]): # Cheat balance mode
+                    if joystick.get_button(BUTTON["Y"]):  # Cheat balance mode
                         if game_state == STATES["manual"]:
                             game_state = STATES["cheat"]
                             env.set_led_state("cheat")
@@ -110,7 +109,7 @@ def run(use_simulator=False):
                             game_state = STATES["cheat"]
                             env.set_led_state("cheat")
 
-                    elif joystick.get_button(BUTTON["X"]): # RL Mode
+                    elif joystick.get_button(BUTTON["X"]):  # RL Mode
                         if game_state == STATES["manual"]:
                             game_state = STATES["rl"]
                             env.set_led_state("rl")
@@ -127,7 +126,7 @@ def run(use_simulator=False):
                             game_state = STATES["rl"]
                             env.set_led_state("rl")
 
-                    elif joystick.get_button(BUTTON["A"]): # Full classical flip up
+                    elif joystick.get_button(BUTTON["A"]):  # Full classical flip up
                         if game_state == STATES["manual"]:
                             game_state = STATES["flip"]
                             env.set_led_state("flip")
@@ -144,7 +143,7 @@ def run(use_simulator=False):
                             game_state = STATES["manual"]
                             env.set_led_state("manual")
 
-                    elif joystick.get_button(BUTTON["B"]): # Switch to manual mode
+                    elif joystick.get_button(BUTTON["B"]):  # Switch to manual mode
                         game_state = STATES["manual"]
                         env.set_led_state("manual")
 
@@ -167,6 +166,7 @@ def run(use_simulator=False):
     except:
         env.close()
         pass
+
 
 def main():
     # Parse command line args
