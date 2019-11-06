@@ -2,9 +2,10 @@ import gym
 import pygame
 import argparse
 import numpy as np
+import sys
 
 from gym_brt.envs import QubeSwingupEnv
-from gym_brt.control import pd_control_policy
+from gym_brt.control import pd_control_policy, flip_and_hold_policy
 from rl_controller import rl_controller
 
 
@@ -21,10 +22,11 @@ AXIS = {
 }
 BUTTON = {"A": 0, "B": 1, "X": 2, "Y": 3}
 
-STATES = {"manual": 0, "cheat": 1, "rl": 2}
+STATES = {"manual": 0, "cheat": 1, "rl": 2, "flip": 4}
 LED = {
     "manual": [1, 0, 0],  # Red
     "cheat": [1, 1, 0],  # Yellow
+    "flip": [0, 1, 0],  # White
     "rl": [0, 0, 1],  # Blue
 }
 
@@ -36,15 +38,15 @@ class QubeSwingupLEDEnv(QubeSwingupEnv):
         super(QubeSwingupEnv, self).__init__(**kwargs)
         self.led_state = LED["manual"]
 
-    def set_led_state(s):
+    def set_led_state(self, s):
         self.led_state = LED[s]
 
     def _led(self):
         is_upright = np.abs(self._alpha) < (10 * np.pi / 180)
         if is_upright:
-            return [0, 1, 0]
+            return [1, 1, 1]
         else:
-            return self._led_color
+            return self.led_state
 
 
 def run(use_simulator=False):
@@ -54,17 +56,24 @@ def run(use_simulator=False):
     clock = pygame.time.Clock()
     joysticks = []
     # for all the connected joysticks
-    for i in range(0, pygame.joystick.get_count()):
-        # create an Joystick object in our list
-        joysticks.append(pygame.joystick.Joystick(i))
-        # initialize them all (-1 means loop forever)
-        joysticks[-1].init()
-        # print a statement telling what the name of the controller is
-        print("Detected joystick '", joysticks[-1].get_name(), "'")
-    joystick = joysticks[-1]
+    try:
+        for i in range(0, pygame.joystick.get_count()):
+            # create an Joystick object in our list
+            joysticks.append(pygame.joystick.Joystick(i))
+            # initialize them all (-1 means loop forever)
+            joysticks[-1].init()
+            # print a statement telling what the name of the controller is
+            print("Detected joystick '", joysticks[-1].get_name(), "'")
+        joystick = joysticks[-1]
+    except:
+        print("Joystick not detected\n")
+        sys.exit(-1)
 
     # Open the Qube Environment ================================================
-    with QubeSwingupLEDEnv(use_simulator=use_simulator) as env:
+    # with QubeSwingupLEDEnv(use_simulator=use_simulator) as env:
+
+    env = QubeSwingupLEDEnv(use_simulator=use_simulator)
+    try:
         state = env.reset()
         state, reward, done, info = env.step(np.array([0], dtype=np.float64))
         action = 0.0
@@ -77,34 +86,65 @@ def run(use_simulator=False):
 
             # Get the actions from the xbox controller =========================
             for event in pygame.event.get():
-                if event.axis == AXIS["left-thumb-x"]:
-                    axis = joystick.get_axis(AXIS["left-thumb-x"])
-                elif event.axis == AXIS["right-thumb-x"]:
-                    axis = joystick.get_axis(AXIS["right-thumb-x"])
+                if event.type == pygame.JOYAXISMOTION:
+                    if event.axis == AXIS["left-thumb-x"]:
+                        axis = joystick.get_axis(AXIS["left-thumb-x"])
+                    elif event.axis == AXIS["right-thumb-x"]:
+                        axis = joystick.get_axis(AXIS["right-thumb-x"])
 
-                if event.button == BUTTON["A"]:
-                    if game_state == STATES["manual"]:
-                        game_state = STATES["cheat"]
-                        env.set_led_state("cheat")
+                if event.type == pygame.JOYBUTTONDOWN:
+                    if joystick.get_button(BUTTON["Y"]): # Cheat balance mode
+                        if game_state == STATES["manual"]:
+                            game_state = STATES["cheat"]
+                            env.set_led_state("cheat")
 
-                    elif game_state == STATES["cheat"]:
-                        game_state = STATES["manual"]
-                        env.set_led_state("manual")
+                        elif game_state == STATES["cheat"]:
+                            game_state = STATES["manual"]
+                            env.set_led_state("manual")
 
-                    elif game_state == STATES["rl"]:
-                        game_state = STATES["cheat"]
-                        env.set_led_state("cheat")
+                        elif game_state == STATES["rl"]:
+                            game_state = STATES["cheat"]
+                            env.set_led_state("cheat")
 
-                elif event.button == BUTTON["B"]:
-                    if game_state == STATES["manual"]:
-                        game_state = STATES["rl"]
-                        env.set_led_state("rl")
+                        elif game_state == STATES["flip"]:
+                            game_state = STATES["cheat"]
+                            env.set_led_state("cheat")
 
-                    elif game_state == STATES["cheat"]:
-                        game_state = STATES["rl"]
-                        env.set_led_state("rl")
+                    elif joystick.get_button(BUTTON["X"]): # RL Mode
+                        if game_state == STATES["manual"]:
+                            game_state = STATES["rl"]
+                            env.set_led_state("rl")
 
-                    elif game_state == STATES["rl"]:
+                        elif game_state == STATES["cheat"]:
+                            game_state = STATES["rl"]
+                            env.set_led_state("rl")
+
+                        elif game_state == STATES["rl"]:
+                            game_state = STATES["manual"]
+                            env.set_led_state("manual")
+
+                        elif game_state == STATES["flip"]:
+                            game_state = STATES["rl"]
+                            env.set_led_state("rl")
+
+                    elif joystick.get_button(BUTTON["A"]): # Full classical flip up
+                        if game_state == STATES["manual"]:
+                            game_state = STATES["flip"]
+                            env.set_led_state("flip")
+
+                        elif game_state == STATES["cheat"]:
+                            game_state = STATES["flip"]
+                            env.set_led_state("flip")
+
+                        elif game_state == STATES["rl"]:
+                            game_state = STATES["flip"]
+                            env.set_led_state("flip")
+
+                        elif game_state == STATES["flip"]:
+                            game_state = STATES["manual"]
+                            env.set_led_state("manual")
+
+                    elif joystick.get_button(BUTTON["B"]): # Switch to manual mode
                         game_state = STATES["manual"]
                         env.set_led_state("manual")
 
@@ -113,16 +153,20 @@ def run(use_simulator=False):
                 action = -3.0 * axis
             elif game_state == STATES["cheat"]:
                 action = -3.0 * axis
-                if abs(state[1]) < (20 * np.pi / 180):
+                if abs(state[1]) < (30 * np.pi / 180):
                     action = pd_control_policy(state)
             elif game_state == STATES["rl"]:
                 action = rl_controller(state)
+            elif game_state == STATES["flip"]:
+                action = flip_and_hold_policy(state)
 
             # Run the action in the environment
             state, reward, done, info = env.step(action)
             if use_simulator:
                 env.render()
-
+    except:
+        env.close()
+        pass
 
 def main():
     # Parse command line args
