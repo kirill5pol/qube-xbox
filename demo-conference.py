@@ -2,6 +2,7 @@ import gym
 import pygame
 import argparse
 import numpy as np
+import sys
 
 from gym_brt.envs import QubeSwingupEnv
 from gym_brt.control import pd_control_policy
@@ -54,14 +55,18 @@ def run(use_simulator=False):
     clock = pygame.time.Clock()
     joysticks = []
     # for all the connected joysticks
-    for i in range(0, pygame.joystick.get_count()):
-        # create an Joystick object in our list
-        joysticks.append(pygame.joystick.Joystick(i))
-        # initialize them all (-1 means loop forever)
-        joysticks[-1].init()
-        # print a statement telling what the name of the controller is
-        print("Detected joystick '", joysticks[-1].get_name(), "'")
-    joystick = joysticks[-1]
+    try:
+        for i in range(0, pygame.joystick.get_count()):
+            # create an Joystick object in our list
+            joysticks.append(pygame.joystick.Joystick(i))
+            # initialize them all (-1 means loop forever)
+            joysticks[-1].init()
+            # print a statement telling what the name of the controller is
+            print("Detected joystick '", joysticks[-1].get_name(), "'")
+        joystick = joysticks[-1]
+    except:
+        print("Joystick not detected\n")
+        sys.exit(-1)
 
     # Open the Qube Environment ================================================
     with QubeSwingupLEDEnv(use_simulator=use_simulator) as env:
