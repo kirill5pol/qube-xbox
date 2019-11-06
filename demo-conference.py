@@ -4,7 +4,7 @@ import argparse
 import numpy as np
 
 from gym_brt.envs import QubeSwingupEnv
-from gym_brt.control import pd_control_policy
+from gym_brt.control import pd_control_policy, flip_and_hold_policy
 from rl_controller import rl_controller
 
 
@@ -21,10 +21,11 @@ AXIS = {
 }
 BUTTON = {"A": 0, "B": 1, "X": 2, "Y": 3}
 
-STATES = {"manual": 0, "cheat": 1, "rl": 2}
+STATES = {"manual": 0, "cheat": 1, "rl": 2, "flip": 4}
 LED = {
     "manual": [1, 0, 0],  # Red
     "cheat": [1, 1, 0],  # Yellow
+    "flip": [0, 1, 0],  # White
     "rl": [0, 0, 1],  # Blue
 }
 
@@ -42,7 +43,7 @@ class QubeSwingupLEDEnv(QubeSwingupEnv):
     def _led(self):
         is_upright = np.abs(self._alpha) < (10 * np.pi / 180)
         if is_upright:
-            return [0, 1, 0]
+            return [1, 1, 1]
         else:
             return self.led_state
 
@@ -64,7 +65,10 @@ def run(use_simulator=False):
     joystick = joysticks[-1]
 
     # Open the Qube Environment ================================================
-    with QubeSwingupLEDEnv(use_simulator=use_simulator) as env:
+    # with QubeSwingupLEDEnv(use_simulator=use_simulator) as env:
+
+    env = QubeSwingupLEDEnv(use_simulator=use_simulator)
+    try:
         state = env.reset()
         state, reward, done, info = env.step(np.array([0], dtype=np.float64))
         action = 0.0
@@ -84,7 +88,7 @@ def run(use_simulator=False):
                         axis = joystick.get_axis(AXIS["right-thumb-x"])
 
                 if event.type == pygame.JOYBUTTONDOWN:
-                    if joystick.get_button(BUTTON["A"]):
+                    if joystick.get_button(BUTTON["Y"]): # Cheat balance mode
                         if game_state == STATES["manual"]:
                             game_state = STATES["cheat"]
                             env.set_led_state("cheat")
@@ -97,7 +101,11 @@ def run(use_simulator=False):
                             game_state = STATES["cheat"]
                             env.set_led_state("cheat")
 
-                    elif joystick.get_button(BUTTON["B"]):
+                        elif game_state == STATES["flip"]:
+                            game_state = STATES["cheat"]
+                            env.set_led_state("cheat")
+
+                    elif joystick.get_button(BUTTON["X"]): # RL Mode
                         if game_state == STATES["manual"]:
                             game_state = STATES["rl"]
                             env.set_led_state("rl")
@@ -109,22 +117,51 @@ def run(use_simulator=False):
                         elif game_state == STATES["rl"]:
                             game_state = STATES["manual"]
                             env.set_led_state("manual")
+
+                        elif game_state == STATES["flip"]:
+                            game_state = STATES["rl"]
+                            env.set_led_state("rl")
+
+                    elif joystick.get_button(BUTTON["A"]): # Full classical flip up
+                        if game_state == STATES["manual"]:
+                            game_state = STATES["flip"]
+                            env.set_led_state("flip")
+
+                        elif game_state == STATES["cheat"]:
+                            game_state = STATES["flip"]
+                            env.set_led_state("flip")
+
+                        elif game_state == STATES["rl"]:
+                            game_state = STATES["flip"]
+                            env.set_led_state("flip")
+
+                        elif game_state == STATES["flip"]:
+                            game_state = STATES["manual"]
+                            env.set_led_state("manual")
+
+                    elif joystick.get_button(BUTTON["B"]): # Switch to manual mode
+                        game_state = STATES["manual"]
+                        env.set_led_state("manual")
 
             # Do an action depending on your state =============================
             if game_state == STATES["manual"]:
                 action = -3.0 * axis
             elif game_state == STATES["cheat"]:
                 action = -3.0 * axis
-                if abs(state[1]) < (20 * np.pi / 180):
+                if abs(state[1]) < (30 * np.pi / 180):
                     action = pd_control_policy(state)
             elif game_state == STATES["rl"]:
                 action = rl_controller(state)
+            elif game_state == STATES["flip"]:
+                action = flip_and_hold_policy(state)
 
             # Run the action in the environment
             state, reward, done, info = env.step(action)
             if use_simulator:
                 env.render()
-
+    except:
+        env.close()
+        pass
 
 def main():
     # Parse command line args
